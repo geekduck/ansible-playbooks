@@ -1,0 +1,86 @@
+---
+- hosts: vagrants
+  user: "{{ lookup('env', 'DB_HOST') }}"
+  vars:
+    temp_dir: "/var/tmp"
+  tasks:
+    - name: generate locale
+      command: "locale-gen ja_JP.UTF-8"
+      become: yes
+
+    - name: set locale
+      command: "dpkg-reconfigure -f noninteractive locales"
+      become: yes
+
+    - name: Set timezone variables
+      copy: content='Asia/Tokyo'
+            dest=/etc/timezone
+            owner=root
+            group=root
+            mode=0644
+            backup=yes
+      notify:
+        - update timezone
+      become: yes
+
+    - name: update timezone
+      command: "dpkg-reconfigure -f noninteractive tzdata"
+      become: yes
+
+    - name: dist-upgrade packages
+      apt: upgrade=dist update_cache=yes #autoremove=yes
+      become: yes
+
+    - name: install packages
+      apt: name={{item}} state=installed update_cache=yes
+      with_items:
+        - zsh
+        - git
+        - tmux
+        - colordiff
+        - emacs24-nox
+        - zip
+        - unzip
+        - curl
+        - wget
+        - golang
+      become: yes
+
+    - name: mkdir for go path
+      file: path={{ ansible_env.HOME }}/.golang state=directory mode=0755
+
+    - name: install peco
+      shell: "go get github.com/peco/peco/cmd/peco"
+      become: yes
+      become_user: vagrant
+      environment:
+        GOPATH: "{{ ansible_env.HOME }}/.golang"
+        PATH: "{{ ansible_env.HOME }}/.golang:{{ ansible_env.PATH }}"
+
+    - name: install ghq
+      shell: "go get github.com/motemen/ghq"
+      environment:
+        GOPATH: "{{ ansible_env.HOME }}/.golang"
+        PATH: "{{ ansible_env.HOME }}/.golang:{{ ansible_env.PATH }}"
+
+    - name: download nodebrew
+      get_url: url="http://git.io/nodebrew" dest={{ temp_dir }}/nodebrew
+
+    - name: install nodebrew
+      command: perl {{ temp_dir }}/nodebrew setup
+
+    - name: Change default shell
+      user: name="{{ ansible_ssh_user }}" shell=/bin/zsh
+      become: yes
+
+    - name: git clone dotfiles
+      git: repo=https://github.com/geekduck/dotfiles.git
+        dest="{{ ansible_env.HOME }}/workspace/github.com/geekduck/dotfiles"
+        version=master
+
+    - name: setup shell
+      shell: "./setup-only-http.sh"
+      become: yes
+      become_user: "{{ ansible_ssh_user }}"
+      args:
+        chdir: "{{ ansible_env.HOME }}/workspace/github.com/geekduck/dotfiles"
