@@ -1,6 +1,6 @@
 ---
 - hosts: vagrants
-  user: "{{ lookup('env', 'DB_HOST') }}"
+  user: vagrant
   vars:
     temp_dir: "/var/tmp"
   tasks:
