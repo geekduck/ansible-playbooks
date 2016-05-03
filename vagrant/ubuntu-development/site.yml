@@ -51,8 +51,6 @@
 
     - name: install peco
       shell: "go get github.com/peco/peco/cmd/peco"
-      become: yes
-      become_user: vagrant
       environment:
         GOPATH: "{{ ansible_env.HOME }}/.golang"
         PATH: "{{ ansible_env.HOME }}/.golang:{{ ansible_env.PATH }}"
