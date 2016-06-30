@@ -1,0 +1,71 @@
+---
+- hosts: vagrants
+  user: vagrant
+  vars:
+    locale: ja_JP.UTF-8
+    zone: Japan
+    temp_dir: "/var/tmp"
+  tasks:
+    - name: Set timezone variables
+      replace: dest=/etc/sysconfig/i18n regexp='^LANG=.*' replace='LANG={{locale}}'
+      become: yes
+
+    - name: update timezone
+      copy: src=/usr/share/zoneinfo/{{zone}} dest=/etc/localtime owner=root group=root mode=0644
+      become: yes
+
+    - name: upgrade all packages
+      yum: name=* state=latest update_cache=yes
+      become: yes
+
+    - name: install packages
+      yum: name={{item}} state=installed update_cache=yes
+      with_items:
+        - zsh
+        - git
+        - tmux
+        - colordiff
+        - emacs-nox
+        - zip
+        - unzip
+        - curl
+        - wget
+        - golang
+      become: yes
+
+    - name: mkdir for go path
+      file: path={{ ansible_env.HOME }}/.golang state=directory mode=0755
+
+    - name: install peco
+      shell: "go get github.com/peco/peco/cmd/peco"
+      environment:
+        GOPATH: "{{ ansible_env.HOME }}/.golang"
+        PATH: "{{ ansible_env.HOME }}/.golang:{{ ansible_env.PATH }}"
+
+    - name: install ghq
+      shell: "go get github.com/motemen/ghq"
+      environment:
+        GOPATH: "{{ ansible_env.HOME }}/.golang"
+        PATH: "{{ ansible_env.HOME }}/.golang:{{ ansible_env.PATH }}"
+
+    - name: download nodebrew
+      get_url: url="http://git.io/nodebrew" dest={{ temp_dir }}/nodebrew
+
+    - name: install nodebrew
+      command: perl {{ temp_dir }}/nodebrew setup
+
+    - name: Change default shell
+      user: name="{{ ansible_ssh_user }}" shell=/bin/zsh
+      become: yes
+
+    - name: git clone dotfiles
+      git: repo=https://github.com/geekduck/dotfiles.git
+        dest="{{ ansible_env.HOME }}/workspace/github.com/geekduck/dotfiles"
+        version=master
+
+    - name: setup shell
+      shell: "./setup-only-http.sh"
+      become: yes
+      become_user: "{{ ansible_ssh_user }}"
+      args:
+        chdir: "{{ ansible_env.HOME }}/workspace/github.com/geekduck/dotfiles"
