@@ -18,6 +18,12 @@
       yum: name=* state=latest update_cache=yes
       become: yes
 
+    - yum: name={{item}} state=installed
+      with_items:
+        - http://pkgs.repoforge.org/rpmforge-release/rpmforge-release-0.5.3-1.el6.rf.x86_64.rpm
+        - http://rpms.famillecollet.com/enterprise/remi-release-6.rpm
+      become: yes
+
     - name: install packages
       yum: name={{item}} state=installed update_cache=yes
       with_items:
@@ -31,6 +37,7 @@
         - curl
         - wget
         - golang
+      enablerepo: remi
       become: yes
 
     - name: mkdir for go path
